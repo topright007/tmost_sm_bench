@@ -1,0 +1,4 @@
+FROM postgres:15.4
+
+RUN apt-get update && \
+    apt-get install iproute2 iputils-ping net-tools -y

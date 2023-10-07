@@ -1,0 +1,105 @@
+services:
+  postgres:
+    container_name: postgres
+    cap_add:
+      - NET_ADMIN
+    build:
+      context: .
+      dockerfile: ./Dockerfile.pg
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_PASSWORD: "password"
+      POSTGRES_HOST_AUTH_METHOD: "trust"
+    deploy:
+      resources:
+        limits:
+          cpus: 4
+#          memory: 2G
+        reservations:
+          cpus: 4
+#          memory: 2G
+  docker-exporter:
+    container_name: docker-exporter
+    image: wywywywy/docker_stats_exporter:latest
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - vm_net
+    ports:
+      - "9487:9487"
+    restart: always
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:v2.14.0
+    depends_on:
+      - "victoriametrics"
+      - "docker-exporter"
+    ports:
+      - 9090:9090
+    volumes:
+      - promdata:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - vm_net
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  victoriametrics:
+    container_name: victoriametrics
+    image: victoriametrics/victoria-metrics
+    ports:
+      - 8428:8428
+      - 2003:2003
+      - 4242:4242
+    volumes:
+      - vmdata:/storage
+    command:
+      - '--storageDataPath=/storage'
+      - '--graphiteListenAddr=:2003'
+      - '--opentsdbListenAddr=:4242'
+      - '--httpListenAddr=:8428'
+    networks:
+      - vm_net
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:6.5.0
+#    entrypoint: >
+#      /bin/sh -c "
+#      cd /var/lib/grafana &&
+#      mkdir -p dashboards &&
+#      && run.sh"
+#      sed 's/$${DS_PROMETHEUS}/Prometheus/g' vm.json > dashboards/vm.json &&
+#      /run.sh"
+    depends_on:
+      - "victoriametrics"
+    ports:
+      - 3000:3000
+    volumes:
+      - grafanadata:/var/lib/grafana
+#      - ./provisioning/:/etc/grafana/provisioning/
+#      - ./../../dashboards/victoriametrics.json:/var/lib/grafana/vm.json
+    networks:
+      - vm_net
+    restart: always
+  jupyter:
+    container_name: jupyter
+    image: jupyter/datascience-notebook
+    volumes:
+      - ./ipnb:/home/jovyan/ipnb
+      - ./jupyter_notebook_config.py:/home/jovyan/.jupyter/jupyter_notebook_config.py
+      - /usr/share/fonts/truetype:/usr/share/fonts/truetype
+    ports:
+      - 8888:8888
+volumes:
+  promdata: { }
+  vmdata: { }
+  grafanadata: { }
+networks:
+  vm_net:

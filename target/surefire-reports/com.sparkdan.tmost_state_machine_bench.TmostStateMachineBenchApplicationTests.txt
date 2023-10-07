@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.sparkdan.tmost_state_machine_bench.TmostStateMachineBenchApplicationTests
+-------------------------------------------------------------------------------
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.771 s - in com.sparkdan.tmost_state_machine_bench.TmostStateMachineBenchApplicationTests
